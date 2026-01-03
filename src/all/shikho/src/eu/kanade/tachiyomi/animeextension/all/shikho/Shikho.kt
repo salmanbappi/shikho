@@ -51,9 +51,9 @@ class Shikho : AnimeHttpSource() {
     override fun latestUpdatesRequest(page: Int): Request = popularAnimeRequest(page)
 
     override fun latestUpdatesParse(response: Response): AnimesPage = popularAnimeParse(response)
-    
+
     override fun animeDetailsParse(response: Response): SAnime {
         // TODO: Implement
-         return SAnime.create()
+        return SAnime.create()
     }
 }
