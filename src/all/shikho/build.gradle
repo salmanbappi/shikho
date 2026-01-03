@@ -1,6 +1,5 @@
 ext {
     extName = 'Shikho'
-    pkgNameSuffix = 'shikho'
     extClass = '.Shikho'
     extVersionCode = 1
 }
