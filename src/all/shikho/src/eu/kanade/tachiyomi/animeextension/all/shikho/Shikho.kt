@@ -64,43 +64,56 @@ class Shikho : AnimeHttpSource() {
     override fun popularAnimeParse(response: Response): AnimesPage {
         val document = response.asJsoup()
         val nextData = document.select("script#__NEXT_DATA__").firstOrNull()?.data()
-            ?: throw Exception("Could not find internal data. Try logging in again in WebView.")
+            ?: throw Exception("Login required in WebView")
 
         val jsonObject = json.parseToJsonElement(nextData).jsonObject
         val props = jsonObject["props"]?.jsonObject?.get("pageProps")?.jsonObject
 
-        // Discovery Phase: If we are on home and no program is active
-        if (response.request.url.toString().endsWith("/student/home")) {
+        // Discovery Phase: Check both /student/home and /student/
+        val requestUrl = response.request.url.toString()
+        if (requestUrl.contains("/student/home") || requestUrl.contains("/student/my-courses")) {
             val enrolledPrograms = props?.get("enrolledPrograms")?.jsonArray
-            if (enrolledPrograms != null && enrolledPrograms.isNotEmpty()) {
-                val firstProgram = enrolledPrograms[0].jsonObject
-                activeProgramId = firstProgram["id"]?.jsonPrimitive?.contentOrNull
-                activeProgramTitle = firstProgram["title_bn"]?.jsonPrimitive?.contentOrNull
+                ?: jsonObject["props"]?.jsonObject?.get("initialState")?.jsonObject?.get("enrolledPrograms")?.jsonArray
 
-                // Retry with active program
-                val newRequest = popularAnimeRequest(1)
-                return popularAnimeParse(client.newCall(newRequest).execute())
+            if (enrolledPrograms != null && enrolledPrograms.isNotEmpty()) {
+                // Find active or pick first
+                val activeProgram = enrolledPrograms.firstOrNull { 
+                    it.jsonObject["is_active"]?.jsonPrimitive?.contentOrNull == "true" 
+                } ?: enrolledPrograms[0]
+                
+                val newId = activeProgram.jsonObject["id"]?.jsonPrimitive?.contentOrNull
+                val newTitle = activeProgram.jsonObject["title_bn"]?.jsonPrimitive?.contentOrNull
+
+                if (activeProgramId == null && newId != null) {
+                    activeProgramId = newId
+                    activeProgramTitle = newTitle
+                    // Retry once
+                    val newRequest = popularAnimeRequest(1)
+                    return popularAnimeParse(client.newCall(newRequest).execute())
+                }
             }
         }
 
         // Parsing Phase: Extract courses
         val courses = mutableListOf<SAnime>()
-
-        // Next.js apps often keep data in pageProps
+        
+        // Data can be in enrolledProgramData or academicPrograms
         val enrolledProgramData = props?.get("enrolledProgramData")?.jsonObject
-        val courseGroups = enrolledProgramData?.get("phases")?.jsonArray
-
-        courseGroups?.forEach { group ->
-            val subjects = group.jsonObject["subjects"]?.jsonArray
-            subjects?.forEach { sub ->
-                val subjObj = sub.jsonObject
-                courses.add(
-                    SAnime.create().apply {
-                        title = subjObj["title_bn"]?.jsonPrimitive?.contentOrNull ?: "Unknown Subject"
-                        url = "/student/my-courses/$activeProgramId?type=academic&phaseId=${group.jsonObject["id"]}&subId=${subjObj["id"]}"
-                        thumbnail_url = subjObj["image"]?.jsonPrimitive?.contentOrNull
-                    },
-                )
+        val phases = enrolledProgramData?.get("phases")?.jsonArray
+        
+        if (phases != null) {
+            phases.forEach { phase ->
+                val subjects = phase.jsonObject["subjects"]?.jsonArray
+                subjects?.forEach { sub ->
+                    val subjObj = sub.jsonObject
+                    courses.add(
+                        SAnime.create().apply {
+                            title = subjObj["title_bn"]?.jsonPrimitive?.contentOrNull ?: "Unknown Subject"
+                            url = "/student/my-courses/$activeProgramId?type=academic&phaseId=${phase.jsonObject["id"]}&subId=${subjObj["id"]}"
+                            thumbnail_url = subjObj["image"]?.jsonPrimitive?.contentOrNull
+                        },
+                    )
+                }
             }
         }
 
@@ -164,7 +177,9 @@ class Shikho : AnimeHttpSource() {
 
     override fun searchAnimeParse(response: Response): AnimesPage = popularAnimeParse(response)
 
-    override fun latestUpdatesRequest(page: Int): Request = popularAnimeRequest(page)
+    override fun latestUpdatesRequest(page: Int): Request {
+        return popularAnimeRequest(page)
+    }
 
     override fun latestUpdatesParse(response: Response): AnimesPage = popularAnimeParse(response)
 
