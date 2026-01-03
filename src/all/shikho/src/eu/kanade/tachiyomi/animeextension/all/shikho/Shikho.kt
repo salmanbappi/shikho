@@ -12,7 +12,6 @@ import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.util.asJsoup
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -86,20 +85,22 @@ class Shikho : AnimeHttpSource() {
 
         // Parsing Phase: Extract courses
         val courses = mutableListOf<SAnime>()
-        
+
         // Next.js apps often keep data in pageProps
         val enrolledProgramData = props?.get("enrolledProgramData")?.jsonObject
         val courseGroups = enrolledProgramData?.get("phases")?.jsonArray
-        
+
         courseGroups?.forEach { group ->
             val subjects = group.jsonObject["subjects"]?.jsonArray
             subjects?.forEach { sub ->
                 val subjObj = sub.jsonObject
-                courses.add(SAnime.create().apply {
-                    title = subjObj["title_bn"]?.jsonPrimitive?.contentOrNull ?: "Unknown Subject"
-                    url = "/student/my-courses/$activeProgramId?type=academic&phaseId=${group.jsonObject["id"]}&subId=${subjObj["id"]}"
-                    thumbnail_url = subjObj["image"]?.jsonPrimitive?.contentOrNull
-                })
+                courses.add(
+                    SAnime.create().apply {
+                        title = subjObj["title_bn"]?.jsonPrimitive?.contentOrNull ?: "Unknown Subject"
+                        url = "/student/my-courses/$activeProgramId?type=academic&phaseId=${group.jsonObject["id"]}&subId=${subjObj["id"]}"
+                        thumbnail_url = subjObj["image"]?.jsonPrimitive?.contentOrNull
+                    },
+                )
             }
         }
 
@@ -145,7 +146,7 @@ class Shikho : AnimeHttpSource() {
         if (query.isNotEmpty()) {
             return GET("$baseUrl/search?term=$query&types=academic", headers)
         }
-        
+
         filters.forEach { filter ->
             when (filter) {
                 is ProgramFilter -> {
@@ -157,7 +158,7 @@ class Shikho : AnimeHttpSource() {
                 else -> {}
             }
         }
-        
+
         return popularAnimeRequest(page)
     }
 
@@ -167,18 +168,18 @@ class Shikho : AnimeHttpSource() {
         val document = response.asJsoup()
         val nextData = document.select("script#__NEXT_DATA__").firstOrNull()?.data()
         val anime = SAnime.create()
-        
+
         if (nextData != null) {
             val jsonObject = json.parseToJsonElement(nextData).jsonObject
             val props = jsonObject["props"]?.jsonObject?.get("pageProps")?.jsonObject
             val enrolledProgramData = props?.get("enrolledProgramData")?.jsonObject
-            
+
             anime.title = enrolledProgramData?.get("title_bn")?.jsonPrimitive?.contentOrNull ?: "Unknown"
             anime.description = enrolledProgramData?.get("description")?.jsonPrimitive?.contentOrNull
             anime.genre = "Education"
             anime.status = SAnime.COMPLETED
         }
-        
+
         return anime
     }
 
@@ -186,7 +187,7 @@ class Shikho : AnimeHttpSource() {
 
     override fun getFilterList(): AnimeFilterList = AnimeFilterList(
         AnimeFilter.Header("Current: $activeProgramTitle"),
-        ProgramFilter("Switch Program", getProgramList())
+        ProgramFilter("Switch Program", getProgramList()),
     )
 
     private class ProgramFilter(name: String, val vals: Array<Program>) :
