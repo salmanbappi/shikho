@@ -77,10 +77,10 @@ class Shikho : AnimeHttpSource() {
 
             if (enrolledPrograms != null && enrolledPrograms.isNotEmpty()) {
                 // Find active or pick first
-                val activeProgram = enrolledPrograms.firstOrNull { 
-                    it.jsonObject["is_active"]?.jsonPrimitive?.contentOrNull == "true" 
+                val activeProgram = enrolledPrograms.firstOrNull {
+                    it.jsonObject["is_active"]?.jsonPrimitive?.contentOrNull == "true"
                 } ?: enrolledPrograms[0]
-                
+
                 val newId = activeProgram.jsonObject["id"]?.jsonPrimitive?.contentOrNull
                 val newTitle = activeProgram.jsonObject["title_bn"]?.jsonPrimitive?.contentOrNull
 
@@ -96,11 +96,11 @@ class Shikho : AnimeHttpSource() {
 
         // Parsing Phase: Extract courses
         val courses = mutableListOf<SAnime>()
-        
+
         // Data can be in enrolledProgramData or academicPrograms
         val enrolledProgramData = props?.get("enrolledProgramData")?.jsonObject
         val phases = enrolledProgramData?.get("phases")?.jsonArray
-        
+
         if (phases != null) {
             phases.forEach { phase ->
                 val subjects = phase.jsonObject["subjects"]?.jsonArray
