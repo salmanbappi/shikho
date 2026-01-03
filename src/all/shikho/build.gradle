@@ -1,0 +1,8 @@
+ext {
+    extName = 'Shikho'
+    pkgNameSuffix = 'shikho'
+    extClass = '.Shikho'
+    extVersionCode = 1
+}
+
+apply from: "$rootDir/common.gradle"
