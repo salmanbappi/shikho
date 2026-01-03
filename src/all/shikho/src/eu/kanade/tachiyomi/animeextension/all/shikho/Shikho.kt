@@ -164,6 +164,10 @@ class Shikho : AnimeHttpSource() {
 
     override fun searchAnimeParse(response: Response): AnimesPage = popularAnimeParse(response)
 
+    override fun latestUpdatesRequest(page: Int): Request = popularAnimeRequest(page)
+
+    override fun latestUpdatesParse(response: Response): AnimesPage = popularAnimeParse(response)
+
     override fun animeDetailsParse(response: Response): SAnime {
         val document = response.asJsoup()
         val nextData = document.select("script#__NEXT_DATA__").firstOrNull()?.data()
